@@ -59,7 +59,7 @@ bool segments_intersect(LineSeg l1, LineSeg l2) {
 }
 
 
-// Naive algorithm  - O(N^2) where N is the number of line segments
+// Naive algorithm - O(N^2) time complexity where N is the number of line segments.
 void naive_intersections(const std::vector<LineSeg>& seg, bool verbose = false) {
 	const size_t size = seg.size();
 	int count = 0;
@@ -86,9 +86,10 @@ void naive_intersections(const std::vector<LineSeg>& seg, bool verbose = false) 
 // The key idea of the algorithm is that as our segment list evolves (as we process the interesting x
 // coordinates from left to right), we only need to consider the possible intersections between segments
 //that are neighbors, at some point in time, in the segment list.
-// No 3 lines intersect at same point (use perturbation or 
-// No vertical line segments (slope = inf) => x-coord of end points and intersection are unique
-// No end point lies on another segment
+// Situations that need special consideration:
+//    3 lines intersect at same point (use perturbation or exact arithmetic)
+//    Vertical line segments (slope = inf) => x-coord of end points and intersection are unique
+//    End point lies on another segment
 #include <algorithm>
 
 Pt2D calculateIntersection(const LineSeg& s1, const LineSeg& s2) {
@@ -118,8 +119,8 @@ void addIntersections(std::priority_queue<Event, std::vector<Event>, std::greate
 			std::nullopt,  // not using slope
 			s2._segId,
 			true,
-			true,
-			std::pair<unsigned long, unsigned long>(s1._segId, s2._segId));        // isLeftEndPt = true for intersection
+			true, // isLeftEndPt = true for intersection
+			std::pair<unsigned long, unsigned long>(s1._segId, s2._segId));
 		eventQ.push(intersectionEvent);
 	}
 }
@@ -146,13 +147,10 @@ void checkAndAddIntersection(
 }
 
 bool FindIntersections(std::vector<LineSeg> segments, bool verbose = false) {
-	// We'll use vector instead of a set as it may work faster
-	// for larger data size
-	//std::vector<Event> eventQ;
 	std::priority_queue<Event, std::vector<Event>, std::greater<Event>> eventQ;
 
 	// Status is a balanced binary search tree 
-	// We will use std::set which is a BST 
+	// We will use std::set which uses a BST/red-black tree
 	// Insertion and deletion complexity O(log n)
 	// finding neighbors is also O(log n)
 	std::set<LineSeg> status;
@@ -161,7 +159,8 @@ bool FindIntersections(std::vector<LineSeg> segments, bool verbose = false) {
 	std::set<SegIdPair> intersectingSegments;
 
 	int seg_ind = 0;
-	// This operation has 2*n operations so time complexity O(n) where n is the number if segments.
+	// This operation adds 2 events per each segment. That is 2*n operations 
+	// So time complexity O(n) where n is the number if segments.
 	for (auto const& seg : segments) {
 		std::optional<float> slope = std::nullopt;
 		if (seg._start.x() != seg._end.x())
@@ -171,7 +170,9 @@ bool FindIntersections(std::vector<LineSeg> segments, bool verbose = false) {
 		++seg_ind;
 	}
 
-	// Insertion of n end points and k intersections points (n + k) log n
+	// Time complexity of insertion of n end points and k intersections points is O ( (n + k) log n )
+	// The log n factor comes from the balanced tree operations using std::set
+	// Time complexity of checking intersections and adding to event queue is O(1)
 	while (!eventQ.empty())
 	{
 		auto p = eventQ.top();
@@ -179,7 +180,9 @@ bool FindIntersections(std::vector<LineSeg> segments, bool verbose = false) {
 		// Update the current sweep line x-coordinate
 		LineSeg::currentSweepX = p._x + 1e-4;
 
-		// As the sweep line progresses, we add new intersection points
+		// As the sweep line progresses from left to right, we add new intersection points to the event queue,
+		// swap segments in the status tree (because of intersection), then check their new neighbors for 
+		// intersections.
 		// 
 		if (p._isIntersection) {
 			const auto& [s1, s2] = p._intersectingSegments;
