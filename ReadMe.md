@@ -4,6 +4,7 @@ Implements two algorithms
 	- a simple naive brute force O(n^2) version
 	- a sweep line method with theoretical complexity of O((n+k) log n) complexity but whose robustness and performance are dependent on the DSA usd for implementation
 
+See [illustration](https://github.com/jaySJ/LineSegIntersections/blob/main/Line-Segment%20Intersection.pdf) of intersection computations.
 ## Performance of sweep line
 Current implementation of sweep line is slower than the brute force implementation and also not robust (reporting fewer intersections than the brute force).
 Example output for file with ~750 of points (with debug flags on):
