@@ -8,23 +8,29 @@ See [illustration](https://github.com/jaySJ/LineSegIntersections/blob/main/Line-
 ## Performance of sweep line
 Current implementation of sweep line is slower than the brute force implementation and also not robust (reporting fewer intersections than the brute force).
 Example output for file with ~750 of points (with debug flags on):
-	`Segment intersections.
-	(Naive) Number of intersections = 66374
-	Naive algorithm took 0s
-	(Sweep Line) Number of intersections = 57646
-	Sweep algorithm took 1s`
+
+```
+Segment intersections.
+(Naive) Number of intersections = 66374
+Naive algorithm took 0s
+(Sweep Line) Number of intersections = 57646
+Sweep algorithm took 1s
+```
 
 ## Build
 Requires Visual Studio with C++20 to build. Use Community Edition 2022.
 Open LineSegIntersections.sln and build.
 
 ## Usage
-Usage: LineSegIntersections.exe <filename> [v]
-	Optional argument `v` will print the actual intersections.
+**Usage:** LineSegIntersections.exe <filename> [v]
+- Optional argument `v` will print the actual intersections.
 
-Example: LineSegIntersections.exe data/test1.dat
+**Example:** LineSegIntersections.exe data/test1.dat
 
 ### Expected data file format
+One line segment (2 end points each with x, y) per line:
+```
 x1, y1, x2, y2
 X3, y3, x4, y4,
 ...
+```
