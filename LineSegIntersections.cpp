@@ -19,17 +19,12 @@ double direction(Pt2D p0, Pt2D p1, Pt2D p2) {
 }
 
 
-double cross_product(Pt2D p1, Pt2D p2) {
-	return p1.x() * p2.y() - p2.x() * p1.y();
-}
-
-
 // Returns true if the point pk (which is known to be colinear) actually
 // falls on the line segment pi-pj. This means the intersection is the
 // point pk. 
 // This routine should only be called when it is known that pk is collinear
 // with the pi,pj. (cross-product is zero)
-bool on_segment(Pt2D pi, Pt2D pj, Pt2D pk) {
+bool onSegment(Pt2D pi, Pt2D pj, Pt2D pk) {
 	if ((std::min(pi.x(), pj.x()) <= pk.x() &&
 		pk.x() <= std::max(pi.x(), pj.x())) &&
 		(std::min(pi.y(), pj.y()) <= pk.y() &&
@@ -40,7 +35,7 @@ bool on_segment(Pt2D pi, Pt2D pj, Pt2D pk) {
 
 // Returns true if the input line segments intersect (including when an 
 // end/start point of a segment falls on another line)
-bool segments_intersect(LineSeg l1, LineSeg l2) {
+bool segmentsIntersect(LineSeg l1, LineSeg l2) {
 	auto d1 = direction(l2._start, l2._end, l1._start);
 	auto d2 = direction(l2._start, l2._end, l1._end);
 	auto d3 = direction(l1._start, l1._end, l2._start);
@@ -49,10 +44,10 @@ bool segments_intersect(LineSeg l1, LineSeg l2) {
 	if (((d1 > 0 && d2 < 0) || (d1 < 0 && d2 > 0)) &&
 		((d3 > 0 && d4 < 0) || (d3 < 0 && d4 > 0)))
 		return true;
-	else if ((d1 == 0 && on_segment(l2._start, l2._end, l1._start)) ||
-		(d2 == 0 && on_segment(l2._start, l2._end, l1._end)) ||
-		(d3 == 0 && on_segment(l1._start, l1._end, l2._start)) ||
-		(d4 == 0 && on_segment(l1._start, l1._end, l2._end)))
+	else if ((d1 == 0 && onSegment(l2._start, l2._end, l1._start)) ||
+		(d2 == 0 && onSegment(l2._start, l2._end, l1._end)) ||
+		(d3 == 0 && onSegment(l1._start, l1._end, l2._start)) ||
+		(d4 == 0 && onSegment(l1._start, l1._end, l2._end)))
 		return true;
 	else
 		return false;
@@ -60,14 +55,14 @@ bool segments_intersect(LineSeg l1, LineSeg l2) {
 
 
 // Naive algorithm - O(N^2) time complexity where N is the number of line segments.
-void naive_intersections(const std::vector<LineSeg>& seg, bool verbose = false) {
+void naiveIntersections(const std::vector<LineSeg>& seg, bool verbose = false) {
 	const size_t size = seg.size();
 	int count = 0;
 	// This double loop means we are performing N * (N-1) intersection check, hence O(N^2)
 	// In practice, the number of intersections k << N.  Use Plane Sweep algorithm instead.
 	for (size_t i = 0; i < size; ++i) {
 		for (size_t j = i + 1; j < size; ++j) {
-			if (segments_intersect(seg[i], seg[j])) {
+			if (segmentsIntersect(seg[i], seg[j])) {
 				if (verbose) {
 					std::cout << seg[i].tostr();
 					std::cout << seg[j].tostr() << std::endl;
@@ -80,16 +75,16 @@ void naive_intersections(const std::vector<LineSeg>& seg, bool verbose = false) 
 }
 
 // https://www.cs.cmu.edu/afs/cs/academic/class/15456-s10/Handouts/BKOS-sweep-line.pdf
-
 // The key observation that leads to a good algorithm is that right before
 // two segments cross, they must be neighbors in the segment list.
-// The key idea of the algorithm is that as our segment list evolves (as we process the interesting x
+// The key idea of the algorithm - as our segment list evolves (as we process the interesting x
 // coordinates from left to right), we only need to consider the possible intersections between segments
-//that are neighbors, at some point in time, in the segment list.
+// that are neighbors, at some point in time, in the segment list.
 // Situations that need special consideration:
 //    3 lines intersect at same point (use perturbation or exact arithmetic)
 //    Vertical line segments (slope = inf) => x-coord of end points and intersection are unique
 //    End point lies on another segment
+//    Segments of zero length
 #include <algorithm>
 
 Pt2D calculateIntersection(const LineSeg& s1, const LineSeg& s2) {
@@ -133,7 +128,7 @@ void checkAndAddIntersection(
 	std::set<std::pair<unsigned long, unsigned long>>& intersectingSegments,
 	double currentSweepX)
 {
-	if (segments_intersect(s1, s2)) {
+	if (segmentsIntersect(s1, s2)) {
 		auto pr = std::make_pair(
 			std::min(s1._segId, s2._segId),
 			std::max(s1._segId, s2._segId)
@@ -153,11 +148,14 @@ bool FindIntersections(std::vector<LineSeg> segments, bool verbose = false) {
 	// We will use std::set which uses a BST/red-black tree
 	// Insertion and deletion complexity O(log n)
 	// finding neighbors is also O(log n)
-	std::set<LineSeg> status;
+	SegmentSweepLineComparer comparer;
+	std::set<LineSeg, std::reference_wrapper<SegmentSweepLineComparer>> status (std::ref(comparer));
+	using StatusIterator = std::set<LineSeg, SegmentSweepLineComparer>::iterator;
+	double epsilon = 1e-4;
 
 	using SegIdPair = std::pair<unsigned long, unsigned long>;
 	std::set<SegIdPair> intersectingSegments;
-
+	
 	int seg_ind = 0;
 	// This operation adds 2 events per each segment. That is 2*n operations 
 	// So time complexity O(n) where n is the number if segments.
@@ -177,8 +175,9 @@ bool FindIntersections(std::vector<LineSeg> segments, bool verbose = false) {
 	{
 		auto p = eventQ.top();
 		eventQ.pop();
-		// Update the current sweep line x-coordinate
-		LineSeg::currentSweepX = p._x + 1e-4;
+
+		// Update the current sweep line x-coordinate		
+		comparer.currentSweepX = p._x + epsilon;
 
 		// As the sweep line progresses from left to right, we add new intersection points to the event queue,
 		// swap segments in the status tree (because of intersection), then check their new neighbors for 
@@ -194,17 +193,21 @@ bool FindIntersections(std::vector<LineSeg> segments, bool verbose = false) {
 				[&s2](const LineSeg& s) { return s._segId == s2; });
 
 			if (it1 != status.end() && it2 != status.end()) {
-				// Make copies
-				auto it_1 = *it1;
-				auto it_2 = *it2;
 
-				// Remove
-				status.erase(it1);
-				status.erase(it2);
+				auto swap_segments_in_status = [&](StatusIterator seg1, StatusIterator& seg2) {
+					// Make copies
+					auto seg1Copy = *seg1;
+					auto seg2Copy = *seg2;
 
-				// reinsert them in swapped order
-				status.insert(it_2);  // Insert the second segment first
-				status.insert(it_1);  // Then insert the first segment
+					// Remove
+					status.erase(seg1);
+					status.erase(seg2);
+
+					// reinsert them in swapped order
+					status.insert(seg2Copy);  // Insert the second segment first
+					status.insert(seg1Copy);  // Then insert the first segment
+				};
+				swap_segments_in_status(it1, it2);
 
 				// Now check for new intersections with their new neighbors
 				auto new_it1 = std::find_if(status.begin(), status.end(),
@@ -216,20 +219,20 @@ bool FindIntersections(std::vector<LineSeg> segments, bool verbose = false) {
 				if (new_it1 != status.begin()) {
 					auto below = std::prev(new_it1);
 					if (below != status.end()) {
-						checkAndAddIntersection(*below, *new_it1, eventQ, intersectingSegments, LineSeg::currentSweepX);
+						checkAndAddIntersection(*below, *new_it1, eventQ, intersectingSegments, comparer.currentSweepX);
 					}
 					auto above = std::next(new_it1);
 					if (above != status.end())
-						checkAndAddIntersection(*above, *new_it1, eventQ, intersectingSegments, LineSeg::currentSweepX);
+						checkAndAddIntersection(*above, *new_it1, eventQ, intersectingSegments, comparer.currentSweepX);
 				}
 				if (std::next(new_it2) != status.end()) {
 					auto below = std::prev(new_it2);
 					if (below != status.end()) {
-						checkAndAddIntersection(*below, *new_it2, eventQ, intersectingSegments, LineSeg::currentSweepX);
+						checkAndAddIntersection(*below, *new_it2, eventQ, intersectingSegments, comparer.currentSweepX);
 					}
 					auto above = std::next(new_it2);
 					if (above != status.end()) {
-						checkAndAddIntersection(*above, *new_it2, eventQ, intersectingSegments, LineSeg::currentSweepX);
+						checkAndAddIntersection(*above, *new_it2, eventQ, intersectingSegments, comparer.currentSweepX);
 					}
 				}
 			}
@@ -240,15 +243,15 @@ bool FindIntersections(std::vector<LineSeg> segments, bool verbose = false) {
 			if (p._isLeftEndPt) {
 				// Insert segment 
 				auto it = status.insert(seg).first;
-				// Above(T,s)
+				// Below (T,s)
 				if (it != status.begin()) {
 					auto below = std::prev(it);
-					checkAndAddIntersection(*below, seg, eventQ, intersectingSegments, LineSeg::currentSweepX);
+					checkAndAddIntersection(*below, seg, eventQ, intersectingSegments, comparer.currentSweepX);
 				}
-				// Below (T,s)
+				// Above (T,s)
 				if (std::next(it) != status.end()) {
 					auto above = std::next(it);
-					checkAndAddIntersection(*above, seg, eventQ, intersectingSegments, LineSeg::currentSweepX);
+					checkAndAddIntersection(*above, seg, eventQ, intersectingSegments, comparer.currentSweepX);
 				}
 			}
 			else {
@@ -260,7 +263,7 @@ bool FindIntersections(std::vector<LineSeg> segments, bool verbose = false) {
 				if (it != status.begin() && it != status.end() && std::next(it) != status.end()) {
 					auto below = std::prev(it);
 					auto above = std::next(it);
-					checkAndAddIntersection(*below, *above, eventQ, intersectingSegments, LineSeg::currentSweepX);
+					checkAndAddIntersection(*below, *above, eventQ, intersectingSegments, comparer.currentSweepX);
 				}
 				if (it != status.end())
 					status.erase(it);
@@ -333,7 +336,7 @@ int main(int argc, char* argv[])
 	}
 
 	auto naive_start = std::chrono::steady_clock::now();
-	naive_intersections(segments, verbose);
+	naiveIntersections(segments, verbose);
 
 	auto naive_end = std::chrono::steady_clock::now();
 	auto naive_elapsed = std::chrono::duration_cast<std::chrono::seconds>(naive_end - naive_start);

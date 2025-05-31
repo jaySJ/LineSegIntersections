@@ -5,20 +5,20 @@
 
 struct Event {
 	float _x, _y;
-	bool _isLeftEndPt=false;
-	unsigned long _segIndex;
+	bool _isLeftEndPt = false;
+	unsigned long _segIndex ;
 	std::optional<float> _slope = std::nullopt;
 	bool _isIntersection = false;
 	std::pair<unsigned long, unsigned long> _intersectingSegments;
 
-	Event(float x, 
-		float y, 
-		std::optional<float> slope, 
-		unsigned long ind, 
-		bool leftOf, 
+	Event(float x,
+		float y,
+		std::optional<float> slope,
+		unsigned long ind,
+		bool leftOf,
 		bool isIntersection,
-		std::pair<unsigned long, unsigned long> intersectingSegments) : 
-		_x(x), _y(y), _slope(slope), _segIndex(ind), _isLeftEndPt(leftOf), 
+		std::pair<unsigned long, unsigned long> intersectingSegments) :
+		_x(x), _y(y), _slope(slope), _segIndex(ind), _isLeftEndPt(leftOf),
 		_isIntersection(isIntersection), _intersectingSegments(intersectingSegments) {
 	}
 
@@ -33,7 +33,8 @@ struct Event {
 		return (_y < other._y) ||
 			((_y == other._y) && _x < other._x);
 	}
-	// Add this operator for priority queue comparison
+
+	// This > operator is used for priority queue comparison
 	bool operator>(const Event& other) const {
 		if (std::abs(_x - other._x) < 1e-10) {
 			return _y > other._y;
