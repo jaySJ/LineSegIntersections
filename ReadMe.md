@@ -23,3 +23,8 @@ Usage: LineSegIntersections.exe <filename> [v]
 	Optional argument `v` will print the actual intersections.
 
 Example: LineSegIntersections.exe data/test1.dat
+
+### Expected data file format
+x1, y1, x2, y2
+X3, y3, x4, y4,
+...
